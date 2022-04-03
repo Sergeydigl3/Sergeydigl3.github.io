@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         LMS GUAP Answers
-// @version      2.3.3
+// @version      2.3.4
 // @description  moodle test answers!
 // @author       Sergeydigl3
 // @match        *://school.moodledemo.net/*
 // @match        *://lms.guap.ru/*
+// @match        *://moodle.latu.tk/*
 // @updateURL    https://Sergeydigl3.github.io/releases/answers-script.user.js
 // @downloadURL  https://Sergeydigl3.github.io/releases/answers-script.user.js
 // @require      https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js
@@ -19,10 +20,7 @@
     'use strict';
 
     const QUESTIONS_SELECTOR = '.que';
-    // const SERVER_URL = 'http://192.168.1.188:8080';
-    // const SERVER_URL = 'https://localhost:8080';
-    // const SERVER_URL = 'https://guapanswers.ddns.net:20880';
-    const SERVER_URL = 'https://guap-script.ydns.eu:20880';
+    const SERVER_URL = 'https://api.soodle.ml';
 
     class User {
 
@@ -368,7 +366,7 @@
          * @protected
          * @type HTMLDivElement
          */
-         _domQuizInfoBlockDetail;
+        _domQuizInfoBlockDetail;
 
         CreateConnectionBlock() {
             // Add html chat code in page
@@ -384,10 +382,10 @@
          * @public
          * @callback
          */
-        ConnectionSuccess(info){
-            if (info['reciever']==client._user.UserId){
-                
-                if (info['success']=='ok'){
+        ConnectionSuccess(info) {
+            if (info['reciever'] == client._user.UserId) {
+
+                if (info['success'] == 'ok') {
                     this._domQuizInfoBlock.textContent = 'Соединение со скриптом: ✔';
                 }
                 else {
@@ -395,7 +393,7 @@
                 }
 
             }
-            
+
         }
     }
 
@@ -419,7 +417,7 @@
         callBackArrayUpdateViewersCounter = [];
 
         constructor(url, user, room) {
-            this._socket = io(url, {transports: ['websocket', 'polling', 'flashsocket']});
+            this._socket = io(url, { transports: ['websocket', 'polling', 'flashsocket'] });
 
             /**
              * @private
@@ -455,7 +453,7 @@
             });
         }
 
-        RegisterConnectListnerAndSendPing(){
+        RegisterConnectListnerAndSendPing() {
             this._socket.on('connect', (message) => {
                 this._socket.emit('ping', [this._user.UserId, GM_info.script.version]);
             });
@@ -547,7 +545,7 @@
             });
         }
 
-        RegisterPongEventListner(){
+        RegisterPongEventListner() {
             this._socket.on('pong', (message) => {
                 if (message === undefined) {
                     return;
@@ -645,7 +643,31 @@
                 console.error('Image not loaded, failed to get SHA256.');
                 return '';
             }
+
             return CryptoJS.SHA256(this.Base64).toString();
+            // return this.Base64.toString();
+        }
+
+
+        /**
+         * @return {string}
+         */
+        get SHA256_Upload() {
+            if (!this.CheckLoad) {
+                console.error('Image not loaded, failed to get SHA256.');
+                return '';
+            }
+            var sha256_temp = CryptoJS.SHA256(this.Base64).toString();
+
+            if (sha256_temp.length === 0) {
+                console.error('Image not loaded, perhaps the question will not be sent fully.');
+            }
+            else {
+                
+            }
+
+            return sha256_temp
+            // return this.Base64.toString();
         }
     }
 
@@ -1382,6 +1404,24 @@
             }
             return [answer];
         }
+        
+        get AnswersReview() {
+            let el = this._domAnswerBlock.querySelector('input');
+            let answer = {
+                'correct': [],
+                'incorrect': []
+            };
+            let text = this.GetAnswerByInput(el);
+            if (text === '') {
+                return {
+                    'correct': [],
+                    'incorrect': []
+                };
+            }
+            if (el.classList.contains('correct')) answer['correct'].push(text);
+            if (el.classList.contains('incorrect')) answer['incorrect'].push(text);
+            return answer;
+        }
 
         get OptionsAnswer() {
             let optionAnswer = this._domAnswerBlock.querySelector('input');
@@ -1585,7 +1625,7 @@
     /**
      * @type QuizInfoBlock
      */
-     let quiz;
+    let quiz;
     /**
      * @type Chat
      */
@@ -1611,7 +1651,7 @@
         var url_string = window.location.href;
         var url = new URL(url_string);
         // console.log(url.hostname+"::"+url.searchParams.get("cmid"));
-        
+
         const room = CryptoJS.SHA256(url.hostname + "::" + url.searchParams.get("cmid")).toString();
         if (QuizInfoCheck || questions.length === 0) {
             if (QuizInfoCheck) {
@@ -1623,7 +1663,7 @@
                 quiz.CreateConnectionBlock();
                 client.RegisterConnectListnerAndSendPing();
             }
-            
+
             return;
         }
         client = new Client(SERVER_URL, user, room);
@@ -1632,16 +1672,16 @@
         client.callBackNewMessageReceived = (message) => {
             chat.AddChatMessage(message);
         };
-        
+
         chat.callBackSendMessage = (message) => {
             client.SendChatMessage(message);
         };
         client.RegisterAddChatMessagesListener();
-        
+
         let reviews_list = [];
         if (review_check) {
             for (const question of questions) {
-                
+
                 let review = question.AnswersReview;
                 if (review != undefined) {
                     for (const correct of review['correct']) {
@@ -1652,10 +1692,10 @@
                             'type': question.Type
                         }
                         let answer;
-                        if (message['type'] == 'match'){
+                        if (message['type'] == 'match') {
                             answer = {
-                                'subquestion':  message['answer'][0],
-                                'answer':  message['answer'][1]
+                                'subquestion': message['answer'][0],
+                                'answer': message['answer'][1]
                             };
                             message['answer'] = answer;
                         }
@@ -1669,10 +1709,10 @@
                             'type': question.Type
                         }
                         let answer;
-                        if (message['type'] == 'match'){
+                        if (message['type'] == 'match') {
                             answer = {
-                                'subquestion':  message['answer'][0],
-                                'answer':  message['answer'][1]
+                                'subquestion': message['answer'][0],
+                                'answer': message['answer'][1]
                             };
                             message['answer'] = answer;
                         }
@@ -1682,11 +1722,11 @@
             }
             client.SendNewReviewAnswers(reviews_list);
         }
-        
+
         for (const question of questions) {
             // TODO: Fix short answer 
             question.CreateHints();
-            
+
             client.callBackArrayUpdateViewersCounter.push((data) => {
                 if (question.TextQuestion === data['question']) {
                     question.ViewerCounter = data['viewers'];
@@ -1729,7 +1769,7 @@
         user = new User();
         chat = new Chat();
 
-        
+
 
         FingerprintJS.load()
             .then(fp => fp.get())
